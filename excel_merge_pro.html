@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Excel Merge Pro</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root{
+    --ink:#16242A;
+    --ink-soft:#33474E;
+    --paper:#F4F1E8;
+    --paper-deep:#ECE7D9;
+    --rule: rgba(22,36,42,0.10);
+    --line-strong: rgba(22,36,42,0.22);
+    --accent:#0E6F62;
+    --accent-dark:#0A5048;
+    --gold:#C98F1F;
+    --danger:#B23A2E;
+    --card-bg:#FFFFFF;
+    --font-display:'Space Grotesk', sans-serif;
+    --font-body:'Inter', sans-serif;
+    --font-mono:'JetBrains Mono', monospace;
+  }
+
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; padding:0; }
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:var(--font-body);
+    line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  a, button{ font-family:inherit; }
+
+  .page{ max-width:880px; margin:0 auto; min-height:100vh; display:flex; flex-direction:column; }
+
+  /* ---------- Header ---------- */
+  .topbar{
+    background:var(--ink);
+    color:var(--paper);
+    padding:22px 28px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:16px;
+    border-bottom:4px solid var(--gold);
+  }
+  .brand{ display:flex; align-items:center; gap:14px; }
+  .brand-mark{ width:38px; height:38px; flex-shrink:0; }
+  .brand-name{
+    font-family:var(--font-display);
+    font-weight:700;
+    font-size:1.25rem;
+    margin:0;
+    letter-spacing:0.01em;
+  }
+  .brand-tag{
+    margin:2px 0 0;
+    font-size:0.82rem;
+    color:rgba(244,241,232,0.68);
+  }
+  .stats{
+    font-family:var(--font-mono);
+    font-size:0.8rem;
+    background:rgba(244,241,232,0.10);
+    padding:8px 12px;
+    border-radius:8px;
+    white-space:nowrap;
+  }
+
+  /* ---------- Ledger main area ---------- */
+  .ledger{
+    flex:1;
+    background-image: repeating-linear-gradient(
+      to bottom,
+      transparent 0,
+      transparent 39px,
+      var(--rule) 39px,
+      var(--rule) 40px
+    );
+    padding:8px 28px 40px;
+  }
+
+  .step{
+    position:relative;
+    padding:28px 0 30px 64px;
+    border-bottom:1px solid var(--line-strong);
+  }
+  .step:last-child{ border-bottom:none; }
+
+  .step-num{
+    position:absolute;
+    left:0;
+    top:30px;
+    font-family:var(--font-display);
+    font-weight:700;
+    font-size:1.6rem;
+    color:var(--gold);
+    line-height:1;
+  }
+  .step-head h2{
+    font-family:var(--font-display);
+    font-size:1.08rem;
+    font-weight:600;
+    margin:0 0 4px;
+    color:var(--ink);
+  }
+  .step-head p{
+    margin:0 0 18px;
+    font-size:0.9rem;
+    color:var(--ink-soft);
+    max-width:520px;
+  }
+
+  /* ---------- Dropzone ---------- */
+  .dropzone{
+    border:2px dashed var(--line-strong);
+    border-radius:12px;
+    padding:28px 20px;
+    text-align:center;
+    background:rgba(255,255,255,0.4);
+    transition:border-color 0.15s ease, background 0.15s ease;
+  }
+  .dropzone.is-dragover{
+    border-color:var(--accent);
+    background:rgba(14,111,98,0.06);
+  }
+  .dropzone-inner svg{ width:34px; height:34px; color:var(--ink-soft); margin-bottom:8px; }
+  .dropzone-inner p{ margin:0; font-size:0.92rem; color:var(--ink-soft); }
+  .link-btn{
+    background:none;
+    border:none;
+    padding:0;
+    color:var(--accent-dark);
+    font-weight:600;
+    text-decoration:underline;
+    cursor:pointer;
+    font-size:0.92rem;
+  }
+  .link-btn:hover{ color:var(--accent); }
+
+  /* ---------- File stack ---------- */
+  .stack{
+    margin-top:18px;
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+  }
+  .stack-empty{
+    font-size:0.85rem;
+    color:rgba(22,36,42,0.45);
+    font-style:italic;
+  }
+  .file-card{
+    background:var(--card-bg);
+    border:1px solid var(--line-strong);
+    border-radius:10px;
+    padding:12px 14px;
+    animation:slideIn 0.22s ease;
+  }
+  @media (prefers-reduced-motion: reduce){
+    .file-card{ animation:none; }
+  }
+  @keyframes slideIn{
+    from{ opacity:0; transform:translateY(6px); }
+    to{ opacity:1; transform:translateY(0); }
+  }
+  .file-card-head{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+  }
+  .file-name{
+    font-family:var(--font-mono);
+    font-size:0.86rem;
+    font-weight:500;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+  }
+  .remove-btn{
+    flex-shrink:0;
+    border:none;
+    background:none;
+    color:var(--danger);
+    font-size:1rem;
+    line-height:1;
+    cursor:pointer;
+    padding:2px 6px;
+    border-radius:6px;
+  }
+  .remove-btn:hover{ background:rgba(178,58,46,0.10); }
+
+  .chip-row{
+    display:flex;
+    flex-wrap:wrap;
+    gap:6px;
+    margin-top:10px;
+  }
+  .chip{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    background:var(--paper-deep);
+    border-radius:999px;
+    padding:4px 10px 4px 8px;
+    font-family:var(--font-mono);
+    font-size:0.74rem;
+    color:var(--ink-soft);
+  }
+  .chip-dot{
+    width:9px; height:9px;
+    border-radius:50%;
+    flex-shrink:0;
+    border:1px solid rgba(0,0,0,0.15);
+  }
+
+  /* ---------- Step 02 ---------- */
+  .field-row{
+    display:flex;
+    align-items:center;
+    gap:8px;
+  }
+  .field-row label{
+    font-size:0.85rem;
+    color:var(--ink-soft);
+    flex-shrink:0;
+  }
+  .text-input{
+    font-family:var(--font-mono);
+    font-size:0.9rem;
+    padding:9px 10px;
+    border:1px solid var(--line-strong);
+    border-radius:8px;
+    background:#fff;
+    color:var(--ink);
+    max-width:240px;
+    width:100%;
+  }
+  .text-input:focus{ outline:2px solid var(--accent); outline-offset:1px; }
+  .suffix{
+    font-family:var(--font-mono);
+    font-size:0.85rem;
+    color:var(--ink-soft);
+  }
+
+  /* ---------- Step 03 ---------- */
+  .primary-btn{
+    background:var(--ink);
+    color:var(--paper);
+    border:none;
+    padding:13px 22px;
+    border-radius:10px;
+    font-family:var(--font-display);
+    font-weight:600;
+    font-size:0.95rem;
+    cursor:pointer;
+    transition:background 0.15s ease, transform 0.1s ease;
+  }
+  .primary-btn:hover:not(:disabled){ background:var(--accent-dark); }
+  .primary-btn:active:not(:disabled){ transform:translateY(1px); }
+  .primary-btn:disabled{
+    background:rgba(22,36,42,0.25);
+    cursor:not-allowed;
+  }
+  .primary-btn:focus-visible{ outline:2px solid var(--gold); outline-offset:2px; }
+
+  .status{
+    margin-top:12px;
+    font-size:0.85rem;
+    color:var(--ink-soft);
+    min-height:1.2em;
+  }
+  .status.is-error{ color:var(--danger); }
+  .status.is-done{ color:var(--accent-dark); font-weight:600; }
+
+  .foot{
+    text-align:center;
+    font-size:0.76rem;
+    color:rgba(22,36,42,0.45);
+    padding:18px 28px 26px;
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header class="topbar">
+    <div class="brand">
+      <svg class="brand-mark" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <rect x="4" y="10" width="24" height="24" rx="3" fill="#C98F1F" opacity="0.85"/>
+        <rect x="9" y="6" width="24" height="24" rx="3" fill="#0E6F62" opacity="0.9"/>
+        <rect x="14" y="2" width="24" height="24" rx="3" fill="#F4F1E8" stroke="#16242A" stroke-width="1.4"/>
+        <line x1="18" y1="8" x2="34" y2="8" stroke="#16242A" stroke-width="1.2" opacity="0.5"/>
+        <line x1="18" y1="13" x2="34" y2="13" stroke="#16242A" stroke-width="1.2" opacity="0.5"/>
+      </svg>
+      <div>
+        <p class="brand-name">Excel Merge Pro</p>
+        <p class="brand-tag">여러 엑셀 파일을 한 권의 장부로 묶습니다</p>
+      </div>
+    </div>
+    <div class="stats" id="stats">0개 파일 · 0개 시트</div>
+  </header>
+
+  <main class="ledger">
+
+    <section class="step">
+      <span class="step-num">01</span>
+      <div class="step-head">
+        <h2>파일 추가</h2>
+        <p>병합할 엑셀 파일(.xlsx, .xls)을 끌어다 놓거나 선택하세요. 추가한 순서대로 시트가 쌓입니다.</p>
+      </div>
+
+      <div class="dropzone" id="dropzone">
+        <input type="file" id="fileInput" multiple accept=".xlsx,.xls" hidden>
+        <div class="dropzone-inner">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+            <path d="M12 16V4M12 4l-4 4M12 4l4 4" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <p>여기로 끌어다 놓기 또는 <button id="browseBtn" class="link-btn" type="button">파일 선택</button></p>
+        </div>
+      </div>
+
+      <div class="stack" id="stack">
+        <p class="stack-empty" id="stackEmpty">아직 추가된 파일이 없습니다.</p>
+      </div>
+    </section>
+
+    <section class="step">
+      <span class="step-num">02</span>
+      <div class="step-head">
+        <h2>저장 설정</h2>
+        <p>병합된 결과 파일의 이름을 정하세요. 저장 위치는 다운로드 시 직접 선택할 수 있습니다.</p>
+      </div>
+      <div class="field-row">
+        <label for="outName">파일 이름</label>
+        <input type="text" id="outName" value="병합결과" class="text-input">
+        <span class="suffix">.xlsx</span>
+      </div>
+    </section>
+
+    <section class="step">
+      <span class="step-num">03</span>
+      <div class="step-head">
+        <h2>병합 실행</h2>
+        <p>모든 파일의 시트를 하나의 파일로 묶고, 각 시트에 구분용 색을 입힙니다. 시트가 2개 이상인 파일은 <span style="font-family:var(--font-mono)">파일이름_시트이름</span> 형식으로 이름이 지정됩니다.</p>
+      </div>
+      <button id="mergeBtn" class="primary-btn" disabled>병합하고 다운로드</button>
+      <p class="status" id="status"></p>
+    </section>
+
+  </main>
+
+  <footer class="foot">
+    모든 처리는 이 브라우저 안에서만 이루어지며 파일은 어디로도 전송되지 않습니다.<br>
+    참고: 브라우저 기반 처리 특성상 글꼴 색상 등 일부 서식과 시트탭 색상은 Excel과 완전히 동일하게 보장되지 않을 수 있습니다.
+  </footer>
+
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  const fileInput = document.getElementById('fileInput');
+  const browseBtn = document.getElementById('browseBtn');
+  const dropzone = document.getElementById('dropzone');
+  const stack = document.getElementById('stack');
+  const stackEmpty = document.getElementById('stackEmpty');
+  const stats = document.getElementById('stats');
+  const mergeBtn = document.getElementById('mergeBtn');
+  const status = document.getElementById('status');
+  const outNameInput = document.getElementById('outName');
+
+  /** @type {{id:number, file:File, nameNoExt:string, wb:any, sheetNames:string[]}[]} */
+  let files = [];
+  let idCounter = 0;
+  const colorCache = new Map(); // key: `${fileId}::${sheetName}` -> "#rrggbb"
+
+  function extlessName(name){
+    return name.replace(/\.[^/.]+$/, '');
+  }
+
+  function sanitizeSheetName(name){
+    let n = String(name).replace(/[\\/?*\[\]:]/g, '_').trim();
+    if (!n) n = 'Sheet';
+    if (n.length > 31) n = n.slice(0, 31);
+    return n;
+  }
+
+  function dedupe(base, usedSet){
+    if (!usedSet.has(base)) return base;
+    let counter = 1;
+    let candidate = base;
+    while (usedSet.has(candidate)){
+      counter += 1;
+      const suffix = '_' + counter;
+      const maxBaseLen = Math.max(1, 31 - suffix.length);
+      candidate = base.slice(0, maxBaseLen) + suffix;
+    }
+    return candidate;
+  }
+
+  function randomPastelHex(){
+    const h = Math.floor(Math.random() * 360);
+    const s = 55 + Math.floor(Math.random() * 20); // 55-75%
+    const l = 68 + Math.floor(Math.random() * 12); // 68-80%
+    return hslToHex(h, s, l);
+  }
+
+  function hslToHex(h, s, l){
+    s /= 100; l /= 100;
+    const k = n => (n + h / 30) % 12;
+    const a = s * Math.min(l, 1 - l);
+    const f = n => l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
+    const toHex = x => Math.round(255 * x).toString(16).padStart(2, '0');
+    return '#' + toHex(f(0)) + toHex(f(8)) + toHex(f(4));
+  }
+
+  function sanitizeFileNamePart(name){
+    return String(name).replace(/[\\/:*?"<>|]/g, '_').trim();
+  }
+
+  function setStatus(msg, kind){
+    status.textContent = msg || '';
+    status.classList.remove('is-error', 'is-done');
+    if (kind) status.classList.add(kind);
+  }
+
+  // Builds the ordered list of output sheets from the current `files` order.
+  function computeEntries(){
+    const entries = [];
+    const used = new Set();
+    for (const f of files){
+      const multi = f.sheetNames.length > 1;
+      for (const sheetName of f.sheetNames){
+        const base = multi ? `${f.nameNoExt}_${sheetName}` : f.nameNoExt;
+        const sanitizedBase = sanitizeSheetName(base);
+        const finalName = dedupe(sanitizedBase, used);
+        used.add(finalName);
+
+        const colorKey = `${f.id}::${sheetName}`;
+        if (!colorCache.has(colorKey)) colorCache.set(colorKey, randomPastelHex());
+        const color = colorCache.get(colorKey);
+
+        entries.push({ fileId: f.id, sheetName, finalName, color });
+      }
+    }
+    return entries;
+  }
+
+  function render(){
+    const entries = computeEntries();
+
+    // stats
+    stats.textContent = `${files.length}개 파일 · ${entries.length}개 시트`;
+
+    // stack
+    stack.innerHTML = '';
+    if (files.length === 0){
+      stack.appendChild(stackEmpty);
+    } else {
+      for (const f of files){
+        const card = document.createElement('div');
+        card.className = 'file-card';
+
+        const head = document.createElement('div');
+        head.className = 'file-card-head';
+
+        const name = document.createElement('span');
+        name.className = 'file-name';
+        name.textContent = f.file.name;
+        head.appendChild(name);
+
+        const removeBtn = document.createElement('button');
+        removeBtn.className = 'remove-btn';
+        removeBtn.type = 'button';
+        removeBtn.setAttribute('aria-label', `${f.file.name} 제거`);
+        removeBtn.textContent = '✕';
+        removeBtn.addEventListener('click', () => {
+          files = files.filter(x => x.id !== f.id);
+          render();
+        });
+        head.appendChild(removeBtn);
+
+        card.appendChild(head);
+
+        const chipRow = document.createElement('div');
+        chipRow.className = 'chip-row';
+        const fileEntries = entries.filter(e => e.fileId === f.id);
+        for (const e of fileEntries){
+          const chip = document.createElement('span');
+          chip.className = 'chip';
+          const dot = document.createElement('span');
+          dot.className = 'chip-dot';
+          dot.style.background = e.color;
+          chip.appendChild(dot);
+          const label = document.createElement('span');
+          label.textContent = e.finalName;
+          chip.appendChild(label);
+          chipRow.appendChild(chip);
+        }
+        card.appendChild(chipRow);
+
+        stack.appendChild(card);
+      }
+    }
+
+    mergeBtn.disabled = files.length === 0;
+  }
+
+  async function addFiles(fileList){
+    const incoming = Array.from(fileList).filter(f =>
+      /\.(xlsx|xls)$/i.test(f.name)
+    );
+    if (incoming.length === 0) return;
+
+    for (const file of incoming){
+      try {
+        const buf = await file.arrayBuffer();
+        const wb = XLSX.read(new Uint8Array(buf), { type: 'array' });
+        idCounter += 1;
+        files.push({
+          id: idCounter,
+          file,
+          nameNoExt: extlessName(file.name),
+          wb,
+          sheetNames: wb.SheetNames
+        });
+      } catch (err){
+        setStatus(`"${file.name}" 파일을 읽는 데 실패하여 건너뜁니다.`, 'is-error');
+      }
+    }
+    render();
+  }
+
+  // --- file input / drag & drop wiring ---
+  browseBtn.addEventListener('click', () => fileInput.click());
+  fileInput.addEventListener('change', (e) => {
+    addFiles(e.target.files);
+    fileInput.value = '';
+  });
+
+  ['dragenter', 'dragover'].forEach(evt =>
+    dropzone.addEventListener(evt, (e) => {
+      e.preventDefault();
+      dropzone.classList.add('is-dragover');
+    })
+  );
+  ['dragleave', 'drop'].forEach(evt =>
+    dropzone.addEventListener(evt, (e) => {
+      e.preventDefault();
+      dropzone.classList.remove('is-dragover');
+    })
+  );
+  dropzone.addEventListener('drop', (e) => {
+    if (e.dataTransfer && e.dataTransfer.files) addFiles(e.dataTransfer.files);
+  });
+
+  // --- merge & save ---
+  mergeBtn.addEventListener('click', async () => {
+    if (files.length === 0) return;
+
+    mergeBtn.disabled = true;
+    setStatus('병합하는 중입니다…');
+
+    try {
+      const entries = computeEntries();
+      if (entries.length === 0){
+        setStatus('병합할 시트가 없습니다.', 'is-error');
+        mergeBtn.disabled = false;
+        return;
+      }
+
+      const outWb = XLSX.utils.book_new();
+      outWb.Workbook = { Sheets: [] };
+
+      entries.forEach((entry, i) => {
+        const src = files.find(f => f.id === entry.fileId);
+        const ws = src.wb.Sheets[entry.sheetName];
+        XLSX.utils.book_append_sheet(outWb, ws, entry.finalName);
+
+        // 시트탭 색상 best-effort 적용 (Excel ARGB 형식)
+        const argb = 'FF' + entry.color.replace('#', '').toUpperCase();
+        outWb.Workbook.Sheets[i] = {
+          name: entry.finalName,
+          Hidden: 0,
+          tabColor: { rgb: argb }
+        };
+      });
+
+      let outName = sanitizeFileNamePart(outNameInput.value.trim()) || '병합결과';
+      if (!/\.xlsx$/i.test(outName)) outName += '.xlsx';
+
+      if (window.showSaveFilePicker){
+        try {
+          const handle = await window.showSaveFilePicker({
+            suggestedName: outName,
+            types: [{
+              description: 'Excel Workbook',
+              accept: { 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'] }
+            }]
+          });
+          const wbout = XLSX.write(outWb, { bookType: 'xlsx', type: 'array' });
+          const writable = await handle.createWritable();
+          await writable.write(wbout);
+          await writable.close();
+          setStatus(`저장 완료: ${handle.name}`, 'is-done');
+        } catch (err){
+          if (err && err.name === 'AbortError'){
+            setStatus('저장이 취소되었습니다.');
+          } else {
+            XLSX.writeFile(outWb, outName);
+            setStatus(`다운로드 폴더에 저장되었습니다: ${outName}`, 'is-done');
+          }
+        }
+      } else {
+        XLSX.writeFile(outWb, outName);
+        setStatus(`다운로드 폴더에 저장되었습니다: ${outName}`, 'is-done');
+      }
+    } catch (err){
+      console.error(err);
+      setStatus('병합 중 오류가 발생했습니다: ' + (err && err.message ? err.message : err), 'is-error');
+    } finally {
+      mergeBtn.disabled = files.length === 0;
+    }
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>
